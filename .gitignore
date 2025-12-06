@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Virtualenv
+pip-log.txt
+pip-delete-this-directory.txt
+
+# VSCode / editors
+.vscode/
+.idea/
+
+# macOS / Linux junk
+.DS_Store
+Thumbs.db
+
+# SQLite database and uploads
+expense_tracker.db
+uploads/
+
+# Environment files
+.env
