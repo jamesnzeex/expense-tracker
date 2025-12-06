@@ -1,0 +1,20 @@
+version: "3.9"
+
+services:
+  bot:
+    build: .
+    env_file:
+      - .env
+    environment:
+      TELEGRAM_BOT_TOKEN: "${TELEGRAM_BOT_TOKEN}"
+      OLLAMA_URL: "${OLLAMA_URL:-http://host.docker.internal:11434}"
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-qwen3-vl:8b-instruct}"
+      DATABASE_URL: "${DATABASE_URL:-sqlite:////app/expense_tracker.db}"
+      STORAGE_DIR: "${STORAGE_DIR:-/app/uploads}"
+      GLOBAL_REGISTRATION_PASSWORD: "${GLOBAL_REGISTRATION_PASSWORD:-change-me}"
+      ALLOWED_CATEGORIES: "${ALLOWED_CATEGORIES:-Food,Transport,Groceries,Shopping,Bills,Entertainment,Travel,Health,Other}"
+      MERCHANT_CATEGORY_MAP: "${MERCHANT_CATEGORY_MAP:-McDonalds:Food;Grab:Transport}"
+    volumes:
+      - ./uploads:/app/uploads
+      - ./expense_tracker.db:/app/expense_tracker.db
+    restart: unless-stopped

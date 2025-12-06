@@ -28,7 +28,11 @@ Set environment variables (or create a `.env` file and export them):
 python -m app.bot
 ```
 
-The bot will create the SQLite database and an uploads folder if missing.
+## Docker
+```bash
+docker compose up --build
+```
+Configure variables in `.env` (see list above). Uploads and the SQLite DB are mounted to the host (`./uploads`, `./expense_tracker.db`).
 
 ## Commands
 - `/start` – help text
