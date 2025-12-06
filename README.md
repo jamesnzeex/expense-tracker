@@ -35,7 +35,6 @@ The bot will create the SQLite database and an uploads folder if missing.
 - `/register <global_password>` – create an account bound to your Telegram user id
 - `/login <global_password>` – login for the current session
 - `/me` – show session info plus your total expenses and last update time
-- Send a receipt PDF/image or statement to extract expenses
 - `/listexpense [count]` – list your last N expenses (default 5, max 500)
   - Each row includes `ID` for deletion or editing
 - `/addexpense` – enter manual expenses (after command, send lines: `amount,date,category[,merchant][,description]`; category must be one of your allowed list; send `cancel` to stop)
@@ -61,7 +60,7 @@ Edit existing expenses (ID + amount required):
 1,15.20,2025-12-01,Food,McDonalds
 2,8.20,2025-12-01,Food
 ```
-Deleteexpenses:
+Delete expenses:
 ```
 /deletemonth 5 2024 (format: month, year)
 /deleteexpense 42 (format: ID)
