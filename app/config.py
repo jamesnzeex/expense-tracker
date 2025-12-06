@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 
@@ -13,20 +13,25 @@ class Settings:
     global_registration_password: str = os.getenv(
         "GLOBAL_REGISTRATION_PASSWORD", "your-password"
     )
-    allowed_categories: list[str] = [
-        c.strip() for c in os.getenv("ALLOWED_CATEGORIES", "").split(",") if c.strip()
-    ] or [
-        "Food",
-        "Transport",
-        "Groceries",
-        "Shopping",
-        "Bills",
-        "Utilities",
-        "Entertainment",
-        "Travel",
-        "Health",
-        "Other",
-    ]
+    allowed_categories: list[str] = field(
+        default_factory=lambda: [
+            c.strip()
+            for c in os.getenv("ALLOWED_CATEGORIES", "").split(",")
+            if c.strip()
+        ]
+        or [
+            "Food",
+            "Transport",
+            "Groceries",
+            "Shopping",
+            "Bills",
+            "Utilities",
+            "Entertainment",
+            "Travel",
+            "Health",
+            "Other",
+        ]
+    )
 
 
 settings = Settings()
