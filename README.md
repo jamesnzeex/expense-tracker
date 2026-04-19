@@ -1,23 +1,22 @@
 # Expense Tracker (LLM powered)
 
-Minimal Telegram bot that ingests receipts/statements, sends them to a locally hosted Ollama model for JSON expense extraction, and stores results in SQLite.
+Minimal Telegram bot that ingests receipts/statements, sends them to a locally hosted vLLM server for JSON expense extraction, and stores results in SQLite.
 
 ## Prerequisites
 - Python 3.10+
-- Local Ollama instance running and a model downloaded (default `qwen3-vl:8b-instruct`; set `OLLAMA_MODEL` to override).
+- Local vLLM server running on `http://localhost:8000` with the model loaded (default `Qwen/Qwen3.6-35B-A3B-FP8`; set `VLLM_MODEL` to override).
 - Telegram bot token from BotFather.
 
 ## Setup
 ```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync
 ```
 
-Set environment variables (or create a `.env` file and export them):
+Set environment variables (or copy `.env.template` to `.env` and edit):
 - `TELEGRAM_BOT_TOKEN` – bot token from BotFather
-- `OLLAMA_URL` – defaults to `http://localhost:11434`
-- `OLLAMA_MODEL` – defaults to `qwen3-vl:8b-instruct`
+- `VLLM_URL` – defaults to `http://localhost:8000`
+- `VLLM_MODEL` – defaults to `Qwen/Qwen3.6-35B-A3B-FP8`
+- `DATE_LOOKBACK_MONTHS` – defaults to `6`; LLM-proposed dates older than this are sent to review
 - `DATABASE_URL` – defaults to `sqlite:///./expense_tracker.db`
 - `STORAGE_DIR` – defaults to `./uploads`
 - `GLOBAL_REGISTRATION_PASSWORD` – shared secret users must supply to register/login
@@ -25,7 +24,7 @@ Set environment variables (or create a `.env` file and export them):
 
 ## Run
 ```bash
-python -m app.bot
+uv run python -m app.bot
 ```
 
 ## Docker
@@ -38,6 +37,7 @@ Configure variables in `.env` (see list above). Uploads and the SQLite DB are mo
 - `/start` – help text
 - `/register <global_password>` – create an account bound to your Telegram user id
 - `/login <global_password>` – login for the current session
+- `/thinking on|off|default` – set thinking mode for your next LLM requests
 - `/me` – show session info plus your total expenses and last update time
 - `/listexpense [count]` – list your last N expenses (default 5, max 500)
   - Each row includes `ID` for deletion or editing
@@ -81,15 +81,18 @@ Notes:
 - Categories are restricted to `ALLOWED_CATEGORIES`; defaults: Food, Transport, Groceries, Shopping, Bills, Utilities, Entertainment, Travel, Health, Other.
 
 ## Query the DB
-With the virtualenv active:
 ```bash
-python -m app.query --users
-python -m app.query --expenses --limit 10
-python -m app.query --expenses --user-id 1 --limit 5
+uv run python -m app.query --users
+uv run python -m app.query --expenses --limit 10
+uv run python -m app.query --expenses --user-id 1 --limit 5
 ```
 
 ## How it works
 - Incoming files are saved to `STORAGE_DIR`.
-- PDFs/text are parsed for text; images are base64-encoded for Ollama.
-- A structured prompt asks Ollama for JSON `{ "expenses": [ ... ] }`.
+- PDFs/text are parsed for text; images are base64-encoded and sent to vLLM as multimodal inputs.
+- PDF and image uploads from the same user within the batching window are grouped into one request.
+- A structured prompt asks the model for JSON `{ "expenses": [ ... ] }`.
+- Thinking mode is controlled per session with `/thinking on|off|default`; when set, the bot sends `chat_template_kwargs={"enable_thinking": ...}` on the request.
+- Date handling is deterministic: LLM dates are accepted only if they are not in the future and not older than `DATE_LOOKBACK_MONTHS`.
+- If a batch has items needing review, reply with `edit 1 2025-03-10, use 2, skip 3` or `use all` / `skip all`. Commas and semicolons are both accepted.
 - Parsed expenses are stored with amount, category, merchant, description, and date.

@@ -2,20 +2,25 @@
 FROM python:3.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PATH="/root/.local/bin:/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     libmagic1 \
     && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh -s -- -y
 
+COPY pyproject.toml uv.lock ./
 COPY app ./app
+
+RUN uv sync --frozen --no-dev
+
 COPY README.md .
 
 VOLUME ["/app/uploads"]
 
-CMD ["python", "-m", "app.bot"]
+CMD ["uv", "run", "python", "-m", "app.bot"]

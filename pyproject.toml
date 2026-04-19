@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling>=1.26"]
+build-backend = "hatchling.build"
+
+[project]
+name = "expense-tracker"
+version = "0.1.0"
+description = "Telegram expense tracker bot powered by vLLM"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "python-telegram-bot==20.8",
+    "SQLAlchemy==2.0.23",
+    "requests==2.31.0",
+    "pypdf==4.0.2",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["app"]
