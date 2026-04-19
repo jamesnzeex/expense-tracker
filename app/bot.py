@@ -1291,6 +1291,8 @@ async def summary_all(update: Update, _: ContextTypes.DEFAULT_TYPE) -> None:
     lines = []
     for key in sorted(totals.keys(), reverse=True):
         lines.append(key)
+        month_total = sum(totals[key].values())
+        lines.append(f"  Total: {month_total:.2f} SGD")
         for cat, amt in totals[key].items():
             lines.append(f"  {cat}: {amt:.2f} SGD")
     await update.message.reply_text("\n".join(lines))
