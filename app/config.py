@@ -15,9 +15,7 @@ def _default_vllm_url() -> str:
 
 @dataclass
 class Settings:
-    telegram_token: str = os.getenv(
-        "TELEGRAM_BOT_TOKEN", "8309899226:AAFzlI65jMdXdAkIzGMZFqo49KBNjTrcsPM"
-    )
+    telegram_token: str = os.getenv("TELEGRAM_BOT_TOKEN")
     vllm_url: str = os.getenv("VLLM_URL", _default_vllm_url())
     vllm_model: str = os.getenv("VLLM_MODEL", "Qwen/Qwen3.6-35B-A3B-FP8")
     date_lookback_months: int = int(os.getenv("DATE_LOOKBACK_MONTHS", "6"))
