@@ -1,11 +1,14 @@
 import json
 import logging
+import os
 from typing import Any, Dict, Optional, Tuple
+from urllib.parse import urlsplit, urlunsplit
 
 import requests
-from requests import RequestException
+from requests import ConnectionError as RequestsConnectionError
+from requests import RequestException, Timeout
 
-from app.config import settings
+from app.config import _default_vllm_url, settings
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,56 @@ def build_prompt(extracted_text: str) -> str:
     )
 
 
+def _configured_vllm_url() -> str:
+    raw = os.getenv("VLLM_URL")
+    if raw is None:
+        return _default_vllm_url()
+
+    configured = raw.strip()
+    if not configured or configured.lower() in {"auto", "detect"}:
+        return _default_vllm_url()
+
+    return configured
+
+
+def _swap_hostname(base_url: str, hostname: str) -> str:
+    parsed = urlsplit(base_url.rstrip("/"))
+    if not parsed.scheme or not parsed.hostname:
+        return base_url.rstrip("/")
+
+    netloc = hostname
+    if parsed.port:
+        netloc = f"{netloc}:{parsed.port}"
+
+    if parsed.username:
+        userinfo = parsed.username
+        if parsed.password is not None:
+            userinfo = f"{userinfo}:{parsed.password}"
+        netloc = f"{userinfo}@{netloc}"
+
+    return urlunsplit(
+        (parsed.scheme, netloc, parsed.path, parsed.query, parsed.fragment)
+    ).rstrip("/")
+
+
+def _vllm_base_urls() -> list[str]:
+    primary = _configured_vllm_url().rstrip("/")
+    candidates = [primary]
+
+    parsed = urlsplit(primary)
+    hostname = parsed.hostname
+    if hostname in {"localhost", "127.0.0.1", "::1"}:
+        alternate = _swap_hostname(primary, "host.docker.internal")
+        if alternate not in candidates:
+            candidates.append(alternate)
+    elif hostname == "host.docker.internal":
+        alternate = _swap_hostname(primary, "localhost")
+        if alternate not in candidates:
+            candidates.append(alternate)
+
+    return candidates
+
+
 def generate_expenses_from_text(
     extracted_text: str,
     image_data_uris: Optional[list[str]] = None,
@@ -68,23 +121,37 @@ def generate_expenses_from_text(
     if enable_thinking is not None:
         payload["chat_template_kwargs"] = {"enable_thinking": enable_thinking}
 
-    endpoint = f"{settings.vllm_url.rstrip('/')}/v1/chat/completions"
-    logger.info(
-        "Calling vLLM endpoint=%s model=%s enable_thinking=%s",
-        endpoint,
-        settings.vllm_model,
-        enable_thinking,
-    )
+    last_exc: Optional[BaseException] = None
+    endpoint = ""
+    base_urls = _vllm_base_urls()
+    for base_url in base_urls:
+        endpoint = f"{base_url.rstrip('/')}/v1/chat/completions"
+        logger.info(
+            "Calling vLLM endpoint=%s model=%s enable_thinking=%s",
+            endpoint,
+            settings.vllm_model,
+            enable_thinking,
+        )
 
-    try:
-        response = requests.post(endpoint, json=payload, timeout=7200)
-        response.raise_for_status()
-    except RequestException as exc:
+        try:
+            response = requests.post(endpoint, json=payload, timeout=7200)
+            response.raise_for_status()
+            break
+        except (RequestsConnectionError, Timeout) as exc:
+            last_exc = exc
+            logger.warning("vLLM unreachable at %s: %s", base_url, exc)
+            continue
+        except RequestException as exc:
+            raise RuntimeError(
+                f"vLLM responded with an HTTP error at {base_url}."
+            ) from exc
+    else:
+        tried = ", ".join(base_urls)
         raise RuntimeError(
-            "Unable to reach vLLM at "
-            f"{settings.vllm_url}. Set VLLM_URL to the reachable vLLM host "
-            "for this runtime environment."
-        ) from exc
+            "Unable to reach vLLM. Tried: "
+            f"{tried}. Set VLLM_URL to the reachable vLLM host for this runtime "
+            "environment."
+        ) from last_exc
 
     body = response.json()
     raw = ""

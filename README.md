@@ -4,7 +4,7 @@ Minimal Telegram bot that ingests receipts/statements, sends them to a locally h
 
 ## Prerequisites
 - Python 3.10+
-- Local vLLM server running on `http://localhost:8000` with the model loaded (default `Qwen/Qwen3.6-35B-A3B-FP8`; set `VLLM_MODEL` to override).
+- Local vLLM server running on `http://localhost:8000` or reachable from Docker via `http://host.docker.internal:8000` with the model loaded (default `Qwen/Qwen3.6-35B-A3B-FP8`; set `VLLM_MODEL` to override).
 - Telegram bot token from BotFather.
 
 ## Setup
@@ -14,7 +14,7 @@ uv sync
 
 Set environment variables (or copy `.env.template` to `.env` and edit):
 - `TELEGRAM_BOT_TOKEN` – bot token from BotFather
-- `VLLM_URL` – defaults to `http://localhost:8000`
+- `VLLM_URL` – defaults to `auto`; the app picks `localhost` when run directly and `host.docker.internal` when run in Docker, then falls back to the alternate loopback target if the first one cannot be reached
 - `VLLM_MODEL` – defaults to `Qwen/Qwen3.6-35B-A3B-FP8`
 - `DATE_LOOKBACK_MONTHS` – defaults to `6`; LLM-proposed dates older than this are sent to review
 - `DATABASE_URL` – defaults to `sqlite:///./expense_tracker.db`
@@ -32,6 +32,7 @@ uv run python -m app.bot
 docker compose up --build
 ```
 Configure variables in `.env` (see list above). Uploads and the SQLite DB are mounted to the host (`./uploads`, `./expense_tracker.db`).
+If you want to pin the endpoint manually, set `VLLM_URL` to either `http://localhost:8000` or `http://host.docker.internal:8000`.
 
 ## Commands
 - `/start` – help text
